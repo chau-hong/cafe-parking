@@ -308,7 +308,7 @@ function card(s, idx) {
     <div class="tags"><span class="badge brand brand-${(s.b || 'SB').toLowerCase()}">${esc(BRAND[s.b || 'SB'])}</span><span class="pill ${pillClass(s.t)}">${esc(s.t === '가능미상' ? '가능·조건미상' : s.t)}</span>${top}${ty}${wr}</div>
     <p class="summ">${esc(s.s)}</p>
     ${capLine}
-    <blockquote class="rawq"><span class="rawl">주차 정보 원문</span>${esc(s.raw || '주차 정보가 비어 있어요.')}</blockquote>
+    ${s.hasRaw ? `<button class="btn small rawbtn" type="button" data-raw="${esc(s.i)}" data-b="${esc(s.b)}">주차 정보 원문 보기</button><blockquote class="rawq" hidden></blockquote>` : '<p class="cap none">주차 정보가 비어 있어요.</p>'}
     <p class="meta"><span>${esc(s.g)} ${esc(s.d)}</span><span>${esc(h.text)} ${stateTxt}</span></p>
     <div class="actions">
       <a class="btn primary small" href="${kakaoTo(s)}" target="_blank" rel="noopener">길찾기</a>
@@ -364,7 +364,19 @@ $('chips').addEventListener('click', (e) => {
 let qTimer;
 $('q').addEventListener('input', (e) => { state.q = e.target.value; clearTimeout(qTimer); qTimer = setTimeout(reload, 350); });
 $('more').addEventListener('click', () => { if (NEXT != null && !LOADING) fetchPage(true); });
-$('list').addEventListener('click', (e) => {
+$('list').addEventListener('click', async (e) => {
+  const rb = e.target.closest('[data-raw]');
+  if (rb) {
+    const q = rb.nextElementSibling;
+    if (!q.hidden) { q.hidden = true; rb.textContent = '주차 정보 원문 보기'; return; }
+    rb.disabled = true; rb.textContent = '불러오는 중…';
+    try {
+      const d = await api('/api/raw', new URLSearchParams({ b: rb.dataset.b, i: rb.dataset.raw }));
+      q.innerHTML = '<span class="rawl">주차 정보 원문</span>'; q.appendChild(document.createTextNode(d.raw || '주차 정보가 비어 있어요.'));
+      q.hidden = false; rb.textContent = '원문 닫기';
+    } catch (err) { rb.textContent = '불러오지 못했어요. 다시 눌러 주세요'; }
+    rb.disabled = false; return;
+  }
   if (e.target.id === 'retry') { reload(); return; }
   const n = e.target.closest('[data-near]');
   if (n) {

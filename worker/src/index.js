@@ -98,7 +98,8 @@ function query(u) {
   const end = Math.min(offset + limit, DEPTH_MAX, arr.length);
   const items = arr.slice(offset, Math.max(offset, end)).map(({ s, dist, h }) => {
     const sibAll = (BY_AREA[s.g + '|' + s.d] || []).filter((v) => v.i !== s.i);
-    return { ...s, dist: Math.round(dist), h,
+    const { raw, ...pub } = s;   // 원문은 목록에 싣지 않는다(상세 요청 /api/raw 로만)
+    return { ...pub, hasRaw: !!raw, dist: Math.round(dist), h,
       sibn: sibAll.length,
       sib: sibAll.slice(0, 14).map((v) => ({ i: v.i, n: v.n, b: v.b, t: v.t, s: v.s, r: v.r })) };
   });
@@ -118,6 +119,12 @@ export default {
     const u = new URL(request.url);
     if (u.pathname === '/api/meta') {
       return json({ built: DATA.built, gus: DATA.gus, dongs: DATA.dongs }, 200, cors, { 'cache-control': 'public, max-age=3600' });
+    }
+    if (u.pathname === '/api/raw') {
+      const b = u.searchParams.get('b') || '', i = u.searchParams.get('i') || '';
+      const s = STORES.find((v) => v.b === b && v.i === i);
+      if (!s) return json({ error: '매장을 찾을 수 없어요.' }, 404, cors);
+      return json({ raw: s.raw || '' }, 200, cors, { 'cache-control': 'public, max-age=300' });
     }
     if (u.pathname === '/api/stores') {
       const r = query(u);
