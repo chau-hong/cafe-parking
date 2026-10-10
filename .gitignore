@@ -1,0 +1,5 @@
+# 매장 데이터는 GitHub에 올리지 않는다 (Worker 배포 때만 로컬에서 사용)
+worker/src/data.json
+node_modules/
+.wrangler/
+.DS_Store

@@ -1,0 +1,7 @@
+name = "cafe-parking-api"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# GitHub Pages 주소(경로 없이 도메인만). 예: "https://myid.github.io"  — 비워 두면 모든 사이트에서 호출 가능
+ALLOWED_ORIGIN = ""

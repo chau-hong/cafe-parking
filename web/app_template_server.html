@@ -1,0 +1,428 @@
+<title>주차되는 카페</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: 한 손으로 쓰는 세로 리스트. 기준 위치 → 정렬·필터 → 카드 순서. 지도 없이 거리·비용·길찾기 링크가 중심. */
+:root {
+  --bg: #F3F5F1;
+  --surface: #FFFFFF;
+  --ink: #15201B;
+  --ink2: #56625C;
+  --line: #DCE1DB;
+  --accent: #2346C9;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E5EAFA;
+  --free: #1B7F46;
+  --free-bg: #E0F2E7;
+  --cond: #9A5F05;
+  --cond-bg: #FAEED2;
+  --paid: #B23A34;
+  --paid-bg: #F8E2E0;
+  --none: #66706B;
+  --none-bg: #E8EBE7;
+  --font: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1512; --surface: #171E1A; --ink: #E8EEEA; --ink2: #A2ADA7; --line: #2A332E;
+    --accent: #93AAFF; --accent-ink: #0D1530; --accent-soft: #1A2347;
+    --free: #5DD08B; --free-bg: #143221; --cond: #E8B24E; --cond-bg: #3A2C0F;
+    --paid: #F08C84; --paid-bg: #3E1E1C; --none: #99A29D; --none-bg: #232A26;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1512; --surface: #171E1A; --ink: #E8EEEA; --ink2: #A2ADA7; --line: #2A332E;
+  --accent: #93AAFF; --accent-ink: #0D1530; --accent-soft: #1A2347;
+  --free: #5DD08B; --free-bg: #143221; --cond: #E8B24E; --cond-bg: #3A2C0F;
+  --paid: #F08C84; --paid-bg: #3E1E1C; --none: #99A29D; --none-bg: #232A26;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5; padding-inline: 16px; padding-block: 0 40px; }
+.app { max-width: 640px; margin-inline: auto; }
+h1, h2, p, ol, dl, dd, blockquote { margin: 0; }
+ol { padding: 0; list-style: none; }
+button, select { font: inherit; color: inherit; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.head { padding-block: 22px 14px; display: flex; flex-direction: column; gap: 2px; }
+.head h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
+.head p { color: var(--ink2); font-size: 13px; }
+
+.ref { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.ref-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field span { font-size: 12px; color: var(--ink2); font-weight: 500; }
+select { width: 100%; min-height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.btn { min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-weight: 500; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; white-space: nowrap; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.btn.small { min-height: 40px; padding: 0 12px; font-size: 13.5px; }
+.btn:disabled { opacity: .55; cursor: default; }
+.note { font-size: 12.5px; color: var(--ink2); }
+.note b { color: var(--ink); font-weight: 600; }
+
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 12px 8px; display: flex; flex-direction: column; gap: 8px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--none-bg); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg button { min-height: 38px; border: 0; border-radius: 8px; background: transparent; font-weight: 500; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); font-weight: 700; box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-size: 13.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.chip.t-free .dot { background: var(--free); }
+.chip.t-cond .dot { background: var(--cond); }
+.chip.t-paid .dot { background: var(--paid); }
+.radius { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; }
+.radius select { min-height: 36px; width: auto; border-radius: 999px; padding-inline: 10px; background: var(--surface); }
+
+.sum { padding-block: 4px 10px; font-size: 13px; color: var(--ink2); }
+.sum b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.list { display: flex; flex-direction: column; gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.card-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.card h2 { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; min-width: 0; overflow-wrap: anywhere; }
+.dist { flex: none; font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; color: var(--accent); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pill { font-size: 12.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+.pill.free { background: var(--free-bg); color: var(--free); }
+.pill.cond { background: var(--cond-bg); color: var(--cond); }
+.pill.paid { background: var(--paid-bg); color: var(--paid); }
+.pill.none { background: var(--none-bg); color: var(--none); }
+.pill.unk { background: transparent; color: var(--ink2); border: 1px dashed var(--line); }
+.chip.t-unk .dot { background: var(--none); }
+.brand-sb { border-color: #00704A; color: #00704A; }
+.brand-cb { border-color: #8B5E3C; color: #8B5E3C; }
+.brand-tw { border-color: #D6336C; color: #D6336C; }
+.badge.brand { font-weight: 600; }
+.bmark { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; color: #fff; font-size: 13px; font-weight: 700; letter-spacing: -0.04em; }
+.bmark.sm { width: 20px; height: 20px; font-size: 10.5px; }
+.chip[data-brand] { gap: 6px; padding-left: 8px; }
+.chip[data-brand][aria-pressed="false"] .bmark { background: var(--none); opacity: .55; }
+.chip[data-brand="SB"][aria-pressed="true"] { border-color: #00704A; background: color-mix(in srgb, #00704A 14%, var(--surface)); color: var(--ink); }
+.chip[data-brand="CB"][aria-pressed="true"] { border-color: #6B3F26; background: color-mix(in srgb, #6B3F26 14%, var(--surface)); color: var(--ink); }
+.chip[data-brand="TW"][aria-pressed="true"] { border-color: #D6336C; background: color-mix(in srgb, #D6336C 14%, var(--surface)); color: var(--ink); }
+.bmark.sb { background: #00704A; } .bmark.cb { background: #6B3F26; } .bmark.tw { background: #D6336C; }
+.card-top .ttl { display: flex; align-items: center; gap: 8px; min-width: 0; }
+#q { width: 100%; min-height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; }
+.badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink2); }
+.badge.top { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.summ { font-size: 16px; font-weight: 600; line-height: 1.45; text-wrap: pretty; }
+.cost { font-size: 13px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+.cap { font-size: 13px; color: var(--ink2); }
+.cap b { color: var(--ink); font-weight: 600; }
+.cap.small b, .cap.small { color: var(--paid); }
+.rawl { display: block; font-size: 11px; letter-spacing: .04em; margin-bottom: 2px; color: var(--ink2); }
+.rawq { margin-top: 0; }
+.cost b { color: var(--ink); font-weight: 600; }
+.meta { font-size: 13px; color: var(--ink2); display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.state { font-weight: 600; }
+.state.open { color: var(--free); }
+.state.closed { color: var(--paid); }
+.actions { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 6px; margin-top: 2px; }
+.actions .btn { padding-inline: 8px; }
+details { border-top: 1px solid var(--line); padding-top: 8px; }
+summary { cursor: pointer; font-size: 13px; color: var(--ink2); min-height: 28px; display: flex; align-items: center; }
+dl.info { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin-top: 8px; font-size: 13px; }
+dl.info dt { color: var(--ink2); }
+dl.info dd { min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+blockquote { margin-top: 8px; padding: 8px 10px; border-left: 3px solid var(--line); font-size: 13px; color: var(--ink2); overflow-wrap: anywhere; }
+.card { scroll-margin-top: 150px; }
+.card.flash { animation: flash 1.8s ease-out; }
+@keyframes flash { 0% { box-shadow: 0 0 0 3px var(--accent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+.sib { border-top: 1px solid var(--line); padding-top: 8px; }
+.siblist { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.sibbtn { width: 100%; text-align: left; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; font: inherit; }
+.sibbtn .sn { font-weight: 600; font-size: 14px; min-width: 0; overflow-wrap: anywhere; }
+.sibbtn .ss { grid-column: 1 / -1; font-size: 12.5px; color: var(--ink2); }
+.pill.sm { font-size: 11.5px; padding: 1px 7px; }
+.more { margin-top: 12px; width: 100%; }
+.empty { padding: 28px 8px; text-align: center; color: var(--ink2); }
+.foot { margin-top: 24px; font-size: 12px; color: var(--ink2); line-height: 1.6; }
+.toast { position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); max-width: 608px; margin-inline: auto; background: var(--ink); color: var(--bg); padding: 12px 14px; border-radius: 12px; font-size: 14px; z-index: 20; }
+@media (prefers-reduced-motion: no-preference) { .btn, .chip { transition: background .15s, border-color .15s; } }
+@media (max-width: 380px) { .actions { grid-template-columns: 1fr 1fr; } .actions .btn:first-child { grid-column: 1 / -1; } }
+</style>
+
+<div class="app">
+  <header class="head">
+    <h1>주차되는 카페</h1>
+    <p id="built"></p>
+  </header>
+
+  <section class="ref" aria-label="기준 위치">
+    <div class="ref-row">
+      <label class="field"><span>구</span><select id="gu"></select></label>
+      <label class="field"><span>동</span><select id="dong"></select></label>
+      <button class="btn" id="loc" type="button">내 위치</button>
+    </div>
+    <label class="field"><span>매장 검색 (이름·주소, 입력하면 전체 지역에서 찾아요)</span><input id="q" type="search" placeholder="예: 하남감일, 판교역, 문정" autocomplete="off"></label>
+    <p class="note" id="refnote"></p>
+  </section>
+
+  <div class="bar">
+    <div class="seg" role="group" aria-label="정렬">
+      <button type="button" id="s-cost" aria-pressed="true">저렴한 순</button>
+      <button type="button" id="s-dist" aria-pressed="false">가까운 순</button>
+    </div>
+    <div class="chips" id="chips">
+      <button class="chip t-free" type="button" data-tag="무료" aria-pressed="true"><span class="dot"></span>무료</button>
+      <button class="chip t-cond" type="button" data-tag="조건부무료" aria-pressed="true"><span class="dot"></span>조건부무료</button>
+      <button class="chip t-paid" type="button" data-tag="유료" aria-pressed="true"><span class="dot"></span>유료</button>
+      <button class="chip t-unk" type="button" data-tag="가능미상" aria-pressed="true"><span class="dot"></span>가능·조건미상</button>
+      <button class="chip" type="button" data-brand="SB" aria-pressed="true"><span class="bmark sm sb">스</span>스타벅스</button>
+      <button class="chip" type="button" data-brand="CB" aria-pressed="true"><span class="bmark sm cb">빈</span>커피빈</button>
+      <button class="chip" type="button" data-brand="TW" aria-pressed="true"><span class="bmark sm tw">투</span>투썸</button>
+      <button class="chip" type="button" id="c-open" aria-pressed="false">영업중만</button>
+      <button class="chip" type="button" id="c-none" aria-pressed="true">불가·미확인 포함</button>
+      <label class="radius">반경
+        <select id="radius" aria-label="반경">
+          <option value="1">1km</option><option value="2">2km</option><option value="3" selected>3km</option>
+          <option value="5">5km</option><option value="10">10km</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <p class="sum" id="sum" aria-live="polite"></p>
+  <ol class="list" id="list"></ol>
+  <button class="btn more" id="more" type="button" hidden>더 보기</button>
+
+  <p class="foot">
+    순위는 무료 → 조건부무료 → 유료 순으로, 같은 분류 안에서는 1시간 주차에 드는 비용이 낮은 순으로 매겼어요(구매금액 조건이 없는 "구매 시 무료"는 0원으로 계산).
+    커피빈·투썸은 매장이 직접 적은 안내 문구를 같은 방식으로 해석했고, 문구에서 요금·조건을 읽지 못한 곳은 '가능·조건미상'으로 따로 표시했어요(순위에서는 제외). 동 이름이 주소에 없는 매장은 가까운 매장의 동을 따라 붙였어요.
+    주차 문구를 자동으로 해석한 결과라 "원문 확인 권장"이 붙은 지점은 상세에서 원문을 봐 주세요.
+  </p>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+const API = '__API_BASE__';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const TIER = { '무료': 0, '조건부무료': 1, '유료': 2, '가능미상': 3 };
+const BRAND = { SB: '스타벅스', CB: '커피빈', TW: '투썸플레이스' };
+const BSHORT = { SB: '스', CB: '빈', TW: '투' };
+const bmark = (b, sm) => `<span class="bmark ${sm ? 'sm ' : ''}${(b || 'SB').toLowerCase()}" title="${BRAND[b || 'SB']}" aria-label="${BRAND[b || 'SB']}">${BSHORT[b || 'SB']}</span>`;
+let META = null;   // { built, gus, dongs }
+let ITEMS = [];    // 지금 화면에 올라온 매장
+let TOTAL = 0, NEXT = null, COUNTS = {}, CAPPED = false, REQ = 0, LOADING = false;
+
+const state = { gu: '서울 강남구', dong: '역삼동', ref: null, sort: 'cost', tags: new Set(['무료', '조건부무료', '유료', '가능미상']), brands: new Set(['SB', 'CB', 'TW']), q: '', openOnly: false, incNone: true, radius: 3 };
+
+/* ---- 저장된 선택 ---- */
+function loadPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem('sbp-prefs') || '{}');
+    if (p.gu && META.gus[p.gu]) { state.gu = p.gu; state.dong = p.dong && META.dongs[p.gu + '|' + p.dong] ? p.dong : ''; }
+    if (p.sort === 'dist' || p.sort === 'cost') state.sort = p.sort;
+    if (typeof p.radius === 'number' && p.radius >= 1 && p.radius <= 10) state.radius = p.radius;
+  } catch (e) { /* 저장소를 못 써도 동작 */ }
+}
+function savePrefs() {
+  try { localStorage.setItem('sbp-prefs', JSON.stringify({ gu: state.gu, dong: state.dong, sort: state.sort, radius: state.radius })); } catch (e) { /* noop */ }
+}
+
+/* ---- 표시 ---- */
+function fmtDist(m) { return m < 1000 ? (Math.max(10, Math.round(m / 10) * 10)) + 'm' : (m / 1000).toFixed(1) + 'km'; }
+function kakaoTo(s) { return 'https://map.kakao.com/link/to/' + encodeURIComponent((BRAND[s.b || 'SB']) + ' ' + s.n) + ',' + s.la + ',' + s.lo; }
+function kakaoMap(s) { return 'https://map.kakao.com/link/map/' + encodeURIComponent((BRAND[s.b || 'SB']) + ' ' + s.n) + ',' + s.la + ',' + s.lo; }
+function sortedKeys(o) { return Object.keys(o).sort((a, b) => a.localeCompare(b, 'ko')); }
+function fillGu() {
+  const groups = {};
+  sortedKeys(META.gus).forEach((g) => { const sd = g.split(' ')[0]; (groups[sd] = groups[sd] || []).push(g); });
+  $('gu').innerHTML = ['서울', '경기', '인천'].filter((sd) => groups[sd]).map((sd) =>
+    `<optgroup label="${sd}">` + groups[sd].map((g) => `<option value="${esc(g)}">${esc(g.slice(sd.length + 1))}</option>`).join('') + '</optgroup>').join('');
+  $('gu').value = state.gu;
+}
+function fillDong() {
+  const list = sortedKeys(META.dongs).filter((k) => k.startsWith(state.gu + '|')).map((k) => k.split('|')[1]);
+  $('dong').innerHTML = `<option value="">구 전체</option>` + list.map((d) => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  if (state.dong && !list.includes(state.dong)) state.dong = '';
+  $('dong').value = state.dong;
+}
+function setRefFromSelect() {
+  const c = state.dong ? META.dongs[state.gu + '|' + state.dong] : META.gus[state.gu];
+  state.ref = { lat: c[0], lng: c[1], label: state.dong ? `${state.gu} ${state.dong}` : `${state.gu} 중심`, mode: 'area' };
+}
+function refNote(extra) {
+  const r = state.ref;
+  const base = r.mode === 'gps' ? '<b>내 위치</b> 기준으로 정렬했어요.' : r.mode === 'store' ? `<b>${esc(r.label)}</b> 기준으로 정렬했어요.` : `<b>${esc(r.label)}</b>의 지점들 평균 위치 기준이에요.`;
+  $('refnote').innerHTML = base + (extra ? ' ' + esc(extra) : '');
+}
+let toastTimer;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 4200);
+}
+
+/* ---- 서버 조회 ---- */
+function params(offset) {
+  const tags = [...state.tags]; if (state.incNone) tags.push('불가', '확인필요');
+  const p = new URLSearchParams({ sort: state.sort, brands: [...state.brands].join(','), tags: tags.join(','), mode: state.ref.mode,
+    lat: state.ref.lat, lng: state.ref.lng, radius: state.radius, gu: state.gu, dong: state.dong, offset: offset || 0 });
+  if (state.q.trim()) p.set('q', state.q.trim());
+  if (state.openOnly) p.set('open', '1');
+  return p;
+}
+async function api(path, p) {
+  const r = await fetch(API + path + (p ? '?' + p : ''), { headers: { accept: 'application/json' } });
+  let body = null; try { body = await r.json(); } catch (e) { /* noop */ }
+  if (!r.ok) throw new Error((body && body.error) || ('서버 응답 오류 (' + r.status + ')'));
+  return body;
+}
+async function fetchPage(append) {
+  const my = ++REQ; LOADING = true;
+  if (!append) { $('sum').textContent = '불러오는 중…'; }
+  $('more').disabled = true;
+  try {
+    if (state.q.trim() && state.q.trim().length < 2) { ITEMS = []; TOTAL = 0; NEXT = null; COUNTS = {}; renderList(); $('sum').textContent = '검색어는 2글자 이상 입력해 주세요.'; return; }
+    const d = await api('/api/stores', params(append ? NEXT : 0));
+    if (my !== REQ) return;
+    ITEMS = append ? ITEMS.concat(d.items) : d.items; TOTAL = d.total; NEXT = d.next; COUNTS = d.counts; CAPPED = d.capped;
+    renderList();
+  } catch (e) {
+    if (my !== REQ) return;
+    $('sum').textContent = ''; $('list').innerHTML = `<li class="empty">${esc(e.message || '불러오지 못했어요.')}<br><button class="btn" id="retry" type="button">다시 시도</button></li>`;
+    $('more').hidden = true;
+  } finally { if (my === REQ) { LOADING = false; $('more').disabled = false; } }
+}
+function pillClass(t) { return t === '무료' ? 'free' : t === '조건부무료' ? 'cond' : t === '유료' ? 'paid' : t === '가능미상' ? 'unk' : 'none'; }
+function card(s, idx) {
+  const h = s.h;
+  const warn = /확인필요|시간값다수|발렛|오픈예정/.test(s.fl);
+  const stateTxt = h.st === 'open' ? '<span class="state open">영업중</span>' : h.st === 'closed' ? '<span class="state closed">영업 종료</span>' : '';
+  const top = s.top ? `<span class="badge top">${esc(s.d)} 1위</span>` : '';
+  const ty = s.ty ? `<span class="badge">${esc(s.ty)}</span>` : '';
+  const capLine = (s.t !== '불가' && s.cp) ? `<p class="cap${s.sm ? ' small' : ''}">주차 가능 대수 <b>${esc(s.cp)}</b>${s.sm ? ' · 소규모/협소' : ''}</p>` : (s.t !== '불가' ? '<p class="cap none">주차 가능 대수 원문 확인</p>' : '');
+  const wr = warn ? `<span class="badge">원문 확인 권장</span>` : '';
+  const more = s.sibn > s.sib.length ? `<li class="sibmore">외 ${s.sibn - s.sib.length}곳은 동 선택으로 볼 수 있어요</li>` : '';
+  const sibHtml = s.sibn ? `<details class="sib"><summary>같은 동 다른 지점 ${s.sibn}곳${s.r ? ` · 이 지점은 ${s.rn}곳 중 ${s.r}위` : ''}</summary>
+      <ul class="siblist">${s.sib.map((v) => `<li><button type="button" class="sibbtn" data-go="${esc(v.i)}" data-g="${esc(s.g)}" data-d="${esc(s.d)}"><span class="sn">${v.r ? v.r + '위 · ' : ''}${bmark(v.b, true)} ${esc(v.n)}</span><span class="pill sm ${pillClass(v.t)}">${esc(v.t === '가능미상' ? '가능·조건미상' : v.t)}</span><span class="ss">${esc(v.t === '불가' ? '주차 불가' : v.s)}</span></button></li>`).join('')}${more}</ul></details>` : '';
+  return `<li class="card" id="c-${esc(s.i)}" data-idx="${idx}">
+    <div class="card-top"><div class="ttl">${bmark(s.b)}<h2>${esc(s.n)}</h2></div><span class="dist">${fmtDist(s.dist)}</span></div>
+    <div class="tags"><span class="badge brand brand-${(s.b || 'SB').toLowerCase()}">${esc(BRAND[s.b || 'SB'])}</span><span class="pill ${pillClass(s.t)}">${esc(s.t === '가능미상' ? '가능·조건미상' : s.t)}</span>${top}${ty}${wr}</div>
+    <p class="summ">${esc(s.s)}</p>
+    ${capLine}
+    <blockquote class="rawq"><span class="rawl">주차 정보 원문</span>${esc(s.raw || '주차 정보가 비어 있어요.')}</blockquote>
+    <p class="meta"><span>${esc(s.g)} ${esc(s.d)}</span><span>${esc(h.text)} ${stateTxt}</span></p>
+    <div class="actions">
+      <a class="btn primary small" href="${kakaoTo(s)}" target="_blank" rel="noopener">길찾기</a>
+      <a class="btn small" href="${kakaoMap(s)}" target="_blank" rel="noopener">지도에서 보기</a>
+      <button class="btn small" type="button" data-near="${esc(s.i)}">이 지점 근처</button>
+    </div>
+    ${sibHtml}
+    <details><summary>주소·영업시간 더보기</summary>
+      <dl class="info">
+        <dt>주소</dt><dd>${esc(s.ad)}</dd>
+        <dt>평일</dt><dd>${esc(s.h1.replace(/\|/g, ' / '))}</dd>
+        <dt>토요일</dt><dd>${esc(s.h2)}</dd>
+        <dt>일요일</dt><dd>${esc(s.h3)}</dd>
+        ${s.r ? `<dt>동 순위</dt><dd>${esc(s.d)} ${s.rn}곳 중 ${s.r}위</dd>` : ''}
+        <dt>오픈일</dt><dd>${esc(s.o)}</dd>
+      </dl>
+    </details>
+  </li>`;
+}
+function renderList() {
+  const qq = state.q.trim();
+  const rad = qq ? `"${qq}" 검색` : (!state.dong && state.ref.mode === 'area') ? '구 전체' : `반경 ${state.radius}km`;
+  const c = COUNTS;
+  $('sum').innerHTML = `${qq ? '' : esc(state.ref.label) + ' · '}${esc(rad)} · <b>${TOTAL}곳</b>` + (TOTAL ? ` (무료 ${c['무료'] || 0} · 조건부 ${c['조건부무료'] || 0} · 유료 ${c['유료'] || 0} · 조건미상 ${c['가능미상'] || 0})` : '');
+  const list = $('list');
+  if (!ITEMS.length) {
+    list.innerHTML = `<li class="empty">조건에 맞는 지점이 없어요.<br>반경을 넓히거나 필터를 풀어 보세요.</li>`;
+    $('more').hidden = true; return;
+  }
+  list.innerHTML = ITEMS.map(card).join('') + (CAPPED && NEXT == null ? '<li class="empty">검색 결과가 많아 앞쪽 일부만 보여드려요. 동이나 검색어로 좁혀 보세요.</li>' : '');
+  $('more').hidden = NEXT == null;
+  $('more').textContent = `더 보기 (${ITEMS.length}/${TOTAL})`;
+}
+function reload() { savePrefs(); return fetchPage(false); }
+
+/* ---- 이벤트 ---- */
+$('gu').addEventListener('change', (e) => { state.gu = e.target.value; state.dong = ''; fillDong(); setRefFromSelect(); refNote(); reload(); });
+$('dong').addEventListener('change', (e) => { state.dong = e.target.value; setRefFromSelect(); refNote(); reload(); });
+$('radius').addEventListener('change', (e) => { state.radius = +e.target.value; reload(); });
+function setSort(k) { state.sort = k; $('s-dist').setAttribute('aria-pressed', k === 'dist'); $('s-cost').setAttribute('aria-pressed', k === 'cost'); reload(); }
+$('s-dist').addEventListener('click', () => setSort('dist'));
+$('s-cost').addEventListener('click', () => setSort('cost'));
+$('chips').addEventListener('click', (e) => {
+  const b = e.target.closest('button.chip'); if (!b) return;
+  const on = b.getAttribute('aria-pressed') !== 'true';
+  b.setAttribute('aria-pressed', on);
+  if (b.dataset.tag) { on ? state.tags.add(b.dataset.tag) : state.tags.delete(b.dataset.tag); }
+  else if (b.dataset.brand) { on ? state.brands.add(b.dataset.brand) : state.brands.delete(b.dataset.brand); }
+  else if (b.id === 'c-open') state.openOnly = on;
+  else if (b.id === 'c-none') state.incNone = on;
+  reload();
+});
+let qTimer;
+$('q').addEventListener('input', (e) => { state.q = e.target.value; clearTimeout(qTimer); qTimer = setTimeout(reload, 350); });
+$('more').addEventListener('click', () => { if (NEXT != null && !LOADING) fetchPage(true); });
+$('list').addEventListener('click', (e) => {
+  if (e.target.id === 'retry') { reload(); return; }
+  const n = e.target.closest('[data-near]');
+  if (n) {
+    const s = ITEMS.find((v) => v.i === n.dataset.near); if (!s) return;
+    state.ref = { lat: s.la, lng: s.lo, label: s.n + ' 근처', mode: 'store' }; state.q = ''; $('q').value = '';
+    refNote(); reload().then(() => window.scrollTo({ top: 0, behavior: 'smooth' })); return;
+  }
+  const b = e.target.closest('[data-go]'); if (b) goTo(b.dataset.go, b.dataset.g, b.dataset.d);
+});
+function syncFilterUI() {
+  document.querySelectorAll('#chips .chip[data-tag]').forEach((b) => b.setAttribute('aria-pressed', state.tags.has(b.dataset.tag)));
+  document.querySelectorAll('#chips .chip[data-brand]').forEach((b) => b.setAttribute('aria-pressed', state.brands.has(b.dataset.brand)));
+  $('c-open').setAttribute('aria-pressed', state.openOnly); $('c-none').setAttribute('aria-pressed', state.incNone);
+  $('radius').value = String(state.radius); $('q').value = state.q;
+}
+async function goTo(id, g, d) {
+  let el = $('c-' + id);
+  if (!el) {   // 같은 동을 필터 없이 열어서 그 카드까지 불러온다
+    ['무료', '조건부무료', '유료', '가능미상'].forEach((t) => state.tags.add(t)); state.incNone = true;
+    ['SB', 'CB', 'TW'].forEach((b) => state.brands.add(b)); state.openOnly = false; state.q = '';
+    state.gu = g; state.dong = d; fillGu(); fillDong(); setRefFromSelect(); refNote(); syncFilterUI();
+    await reload();
+    for (let k = 0; k < 12 && !$('c-' + id) && NEXT != null; k++) await fetchPage(true);
+    el = $('c-' + id);
+  }
+  if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1900); }
+}
+$('loc').addEventListener('click', () => {
+  const btn = $('loc');
+  const fail = () => { btn.disabled = false; toast('현재 위치를 받을 수 없어요. 구와 동을 골라 주세요.'); };
+  try {
+    if (!navigator.geolocation) return fail();
+    btn.disabled = true;
+    navigator.geolocation.getCurrentPosition((p) => {
+      btn.disabled = false;
+      state.ref = { lat: p.coords.latitude, lng: p.coords.longitude, label: '내 위치', mode: 'gps' }; state.q = ''; $('q').value = '';
+      refNote(); reload();
+    }, fail, { timeout: 8000, maximumAge: 60000 });
+  } catch (e) { fail(); }
+});
+
+/* ---- 시작 ---- */
+async function start() {
+  try {
+    META = await api('/api/meta');
+  } catch (e) {
+    $('sum').textContent = '';
+    $('list').innerHTML = `<li class="empty">데이터를 불러오지 못했어요.<br>${esc(e.message)}<br><button class="btn" id="retry0" type="button">다시 시도</button></li>`;
+    $('retry0').addEventListener('click', start); return;
+  }
+  loadPrefs();
+  $('built').textContent = `수도권(서울·경기·인천) 스타벅스·커피빈·투썸 · ${META.built} 수집 · 주차 정보는 각 매장 안내 기준`;
+  fillGu(); fillDong(); setRefFromSelect();
+  $('radius').value = String(state.radius);
+  $('s-dist').setAttribute('aria-pressed', state.sort === 'dist');
+  $('s-cost').setAttribute('aria-pressed', state.sort === 'cost');
+  syncFilterUI(); refNote();
+  fetchPage(false);
+}
+start();
+</script>
